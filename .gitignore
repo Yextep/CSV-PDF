@@ -1,0 +1,10 @@
+__pycache__/
+.pytest_cache/
+.venv/
+android/.gradle/
+android/local.properties
+android/**/build/
+dist/
+*.p12
+*.jks
+android/app/src/main/python/office_core.py
