@@ -2,6 +2,12 @@
 
 Luma adapta el conversor de este repositorio a una app en español que funciona sin conexión. El script de escritorio se conserva y se incluye durante la compilación como `office_core.py`; la adaptación estricta está en `android/app/src/main/python/luma_engine.py`.
 
+[Descargar Luma 1.0 (APK firmado)](https://github.com/Yextep/CSV-PDF/releases/download/luma-v1.0.0/Luma.apk) · [Pruebas de la versión](https://github.com/Yextep/CSV-PDF/actions/runs/38121454488)
+
+Capturas del emulador Android 15:
+
+<p><img src="luma-android-light.png" width="220" alt="Luma en modo claro"><img src="luma-android-dark.png" width="220" alt="Luma en modo oscuro"></p>
+
 ## Lo que incluye
 
 - Modo claro, oscuro o del sistema, con elección persistente y barras Android del mismo tema.
@@ -49,3 +55,5 @@ Arquitectura: interfaz HTML/CSS local servida mediante [WebViewAssetLoader](http
 ## Instalar
 
 Descarga `Luma.apk`, ábrelo desde el administrador de archivos y permite la instalación desde esa aplicación si Android lo solicita. Después, toca **Añadir archivos** o **Prueba con un ejemplo**. Los resultados aparecen al terminar y quedan disponibles en **Actividad**.
+
+La entrega 1.0 se compiló desde `ef2be768d1dfd3261684af3e191c56fc3502d857`. SHA-256 del APK: `55ca77b0a702e8840bee79c5ffa3d9a9ee4c6c6e265f60fd6c8e5dc85c8ab512`. Se verificaron 12 pruebas Python, cinco anchos y tres alturas de interfaz, Android Lint, tres pruebas instrumentadas en Android 15 y la firma del APK descargado. La fidelidad a la maquetación Office y los casos fuera de los formatos/límites anteriores siguen sujetos a esas limitaciones.
