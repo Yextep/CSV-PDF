@@ -32,7 +32,7 @@ tasks.register('syncOfficeCore', Copy) {
     rename { 'office_core.py' }
 }
 tasks.configureEach { task ->
-    if (task.name.startsWith('generate') && task.name.endsWith('PythonAssets')) {
+    if (task.name.startsWith('merge') && task.name.endsWith('PythonSources')) {
         task.dependsOn tasks.named('syncOfficeCore')
     }
 }
@@ -43,4 +43,5 @@ dependencies {
     androidTestImplementation 'androidx.test:runner:1.6.2'
     androidTestImplementation 'androidx.test:core:1.6.1'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-intents:3.6.1'
 }

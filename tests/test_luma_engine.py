@@ -128,3 +128,24 @@ def test_zip_size_limit_and_options(tmp_path, monkeypatch):
         run(source, tmp_path / "out")
     with pytest.raises(ValueError, match="configuración"):
         run(source, tmp_path / "out", delimiter="dos")
+
+
+def test_csv_safety_preserves_negative_numbers_and_zero(tmp_path):
+    book = Workbook()
+    book.active.append([-42, -1.5, 0, "-42", "@SUM(A1)"])
+    source = tmp_path / "numeros.xlsx"
+    book.save(source)
+    result = run(source, tmp_path / "out", safe=True)
+    with (tmp_path / "out" / result["files"][0]).open(encoding="utf-8-sig", newline="") as file:
+        assert next(csv.reader(file)) == ["-42", "-1.5", "0", "'-42", "'@SUM(A1)"]
+    source = tmp_path / "cero.fods"
+    source.write_text(ODF.replace('office:value="3.5"', 'office:value="0"'))
+    result = run(source, tmp_path / "odf")
+    assert (tmp_path / "odf" / result["files"][0]).read_text(encoding="utf-8-sig") == "Café,0\n"
+
+
+def test_spreadsheet_xml_rejects_unbounded_index(tmp_path):
+    source = tmp_path / "indices.xml"
+    source.write_text('<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Hoja"><Table><Row ss:Index="999999999"><Cell><Data>x</Data></Cell></Row></Table></Worksheet></Workbook>')
+    with pytest.raises(ValueError, match="índices"):
+        run(source, tmp_path / "out")

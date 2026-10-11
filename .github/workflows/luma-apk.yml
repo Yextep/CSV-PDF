@@ -86,4 +86,5 @@ jobs:
             android/app/build/reports/
             android/app/build/outputs/androidTest-results/
             docs/luma-*.png
+            docs/luma-android-logcat.txt
           if-no-files-found: ignore

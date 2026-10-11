@@ -57,6 +57,7 @@ def main():
                     page.evaluate(f"send('theme',{{mode:'{mode}'}})")
                     page.wait_for_function(f"document.documentElement.dataset.theme === '{mode}'")
                     if width == 390:
+                        page.wait_for_timeout(300)
                         page.screenshot(path=str(ROOT / f"docs/luma-{mode}.png"), full_page=True)
                 page.locator("#demo").click()
                 page.wait_for_function("state.selection.length===2")

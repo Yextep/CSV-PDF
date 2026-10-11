@@ -24,7 +24,7 @@ Hojas: XLSX, XLSM, XLTX, XLTM, XLS, XLT, XLSB, ODS, OTS, FODS y XML de hoja de c
 
 Los PDF de documentos Office/HTML/RTF contienen texto y tablas aproximadas: no conservan imágenes, estilos ni maquetación original. Esto se anuncia antes de convertir y en cada resultado afectado. Los documentos sin texto extraíble o dañados fallan explícitamente; no se genera un PDF de error marcado como éxito. DOC antiguo, Pages, enlaces de Google y documentos cifrados requieren exportación previa desde su aplicación de origen.
 
-CSV conserva los valores guardados de las fórmulas; si no hay valor cacheado, conserva el texto y muestra un aviso. No recalcula fórmulas. Hasta 100 archivos, 32 MB por archivo, 128 MB por lote, 500.000 celdas por hoja, un millón de caracteres y 300 páginas de texto por documento. Archivos ZIP internos: 100 MB expandidos y 5.000 entradas. Las carpetas pueden contener hasta 3.000 elementos y 20 niveles. Android puede restringir algunas carpetas del sistema.
+CSV conserva los valores guardados de las fórmulas; si no hay valor cacheado, conserva el texto y muestra un aviso. No recalcula fórmulas. Hasta 100 archivos, 32 MB por archivo, 128 MB por lote, 500.000 celdas por hoja, un millón de celdas por libro, un millón de caracteres y 300 páginas de texto por documento. Archivos ZIP internos: 100 MB expandidos y 5.000 entradas. Las carpetas pueden contener hasta 3.000 elementos y 20 niveles. Android puede restringir algunas carpetas del sistema.
 
 ## Compilación y pruebas
 

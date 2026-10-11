@@ -6,6 +6,7 @@ import json
 import sys
 import zipfile
 from pathlib import Path
+from decimal import Decimal
 from defusedxml import ElementTree as ET
 
 try:
@@ -19,6 +20,15 @@ except ImportError:
     spec.loader.exec_module(core)
 
 core.ET = ET
+_normalize = core.normalize_cell_value
+
+
+def normalize_mobile_cell(value, safe_csv_mode=False):
+    # Proteger texto peligroso sin convertir números negativos en texto.
+    return _normalize(value, safe_csv_mode=safe_csv_mode and isinstance(value, str))
+
+
+core.normalize_cell_value = normalize_mobile_cell
 
 SHEETS = {".xlsx", ".xlsm", ".xltx", ".xltm", ".xls", ".xlt", ".xlsb", ".ods", ".ots", ".fods", ".xml"}
 DOCS = {".docx", ".docm", ".dotx", ".dotm", ".odt", ".ott", ".fodt", ".sxw", ".txt", ".text", ".html", ".htm", ".xhtml", ".rtf"}
@@ -89,17 +99,17 @@ def odf_sheets(source):
                 repeat = max(1, int(attr(cell, "number-columns-repeated", "1")))
                 kind = attr(cell, "value-type")
                 if kind in {"float", "percentage", "currency"}:
-                    value = attr(cell, "value")
+                    value = Decimal(attr(cell, "value", "0"))
                 elif kind == "boolean":
                     value = attr(cell, "boolean-value").upper()
                 elif kind in {"date", "time"}:
                     value = attr(cell, kind + "-value")
                 else:
                     value = "\n".join(odf_text(p) for p in cell if local(p.tag) == "p")
-                if not value and attr(cell, "formula"):
+                if value in (None, "") and attr(cell, "formula"):
                     value = attr(cell, "formula")
                     missing_formula += repeat
-                if not value:
+                if value in (None, ""):
                     blanks += repeat
                     continue
                 if len(values) + blanks + repeat > 16384:
@@ -125,6 +135,26 @@ def odf_sheets(source):
 
 def check_xlsx_dimensions(source):
     from openpyxl import load_workbook
+    from openpyxl.utils.cell import coordinate_to_tuple, range_boundaries
+    # No confiar solo en <dimension>: algunos libros declaran A1 aunque contengan más.
+    total_cells = 0
+    with zipfile.ZipFile(source) as archive:
+        for name in archive.namelist():
+            if not (name.startswith("xl/worksheets/sheet") and name.endswith(".xml")):
+                continue
+            max_row = max_col = 0
+            for node in ET.fromstring(archive.read(name)).iter():
+                if local(node.tag) == "c" and node.get("r"):
+                    row, column = coordinate_to_tuple(node.get("r"))
+                    max_row, max_col = max(max_row, row), max(max_col, column)
+                elif local(node.tag) == "mergeCell" and node.get("ref"):
+                    _, _, column, row = range_boundaries(node.get("ref"))
+                    max_row, max_col = max(max_row, row), max(max_col, column)
+                if max_row * max_col > MAX_CELLS:
+                    raise ValueError("La hoja supera el límite de 500.000 celdas.")
+            total_cells += max_row * max_col
+            if total_cells > 1_000_000:
+                raise ValueError("El libro supera un millón de celdas. Divide sus hojas en varios archivos.")
     book = load_workbook(source, read_only=True, data_only=False)
     try:
         for sheet in book:
@@ -134,15 +164,60 @@ def check_xlsx_dimensions(source):
         book.close()
 
 
+def check_xml_dimensions(source):
+    root = ET.fromstring(source.read_bytes())
+    for node in root.iter():
+        if local(node.tag).lower() in {"row", "cell"}:
+            index = int(float(attr(node, "Index", "1")))
+            if index > (100000 if local(node.tag).lower() == "row" else 16384):
+                raise ValueError("El XML tiene índices de fila o columna demasiado grandes.")
+
+
+def bounded_xlsb(source):
+    from pyxlsb import open_workbook
+    with open_workbook(str(source)) as book:
+        for name in book.sheets:
+            rows, cells = [], 0
+            with book.get_sheet(name) as sheet:
+                for row in sheet.rows():
+                    values = [cell.v for cell in row]
+                    cells += max(1, len(values))
+                    if cells > MAX_CELLS:
+                        raise ValueError("La hoja supera el límite de 500.000 celdas.")
+                    rows.append(values)
+            yield core.SheetData(source, name, rows, "pyxlsb-local", ["XLSB: se exportan valores guardados, sin recalcular fórmulas."])
+
+
 def read_sheets(source):
     ext = source.suffix.lower()
     if ext in {".ods", ".ots", ".fods"}:
         return odf_sheets(source)
     if ext in core.OOXML_EXCEL_EXTENSIONS and zipfile.is_zipfile(source):
         check_xlsx_dimensions(source)
+        return core.iter_openpyxl_sheets(source)
+    if ext in {".xls", ".xlt"} and core.read_prefix(source, 8).startswith(core.OLE_CFB_SIGNATURE):
+        import xlrd
+        book = xlrd.open_workbook(str(source), on_demand=True)
+        try:
+            total = 0
+            for name in book.sheet_names():
+                sheet = book.sheet_by_name(name)
+                if sheet.nrows * sheet.ncols > MAX_CELLS:
+                    raise ValueError("La hoja supera el límite de 500.000 celdas.")
+                total += sheet.nrows * sheet.ncols
+                if total > 1_000_000:
+                    raise ValueError("El libro supera un millón de celdas. Divide sus hojas.")
+        finally:
+            book.release_resources()
+        return core.iter_xlrd_sheets(source)
+    if ext == ".xlsb":
+        return bounded_xlsb(source)
     if ext == ".xml":
         # XML se acepta únicamente como hoja: nunca como texto por accidente.
+        check_xml_dimensions(source)
         return core.iter_xml_spreadsheet_sheets(source)
+    if core.sniff_text_tabular_kind(source) == "xml_spreadsheet":
+        check_xml_dimensions(source)
     return core.iter_excel_sheets_with_fallbacks(source, None, 60)
 
 
@@ -197,7 +272,14 @@ def convert(source_path: str, output_path: str, options_json: str = "{}") -> str
         return json.dumps({"kind": "pdf", "lines": lines, "warnings": warnings}, ensure_ascii=False)
     files, warnings = [], []
     try:
-        sheets = list(read_sheets(source))
+        sheets, total = [], 0
+        for sheet in read_sheets(source):
+            if not isinstance(sheet.rows, list):
+                sheet.rows = list(sheet.rows)
+            total += sum(max(1, len(row)) for row in sheet.rows)
+            if total > 1_000_000:
+                raise ValueError("El libro supera un millón de celdas. Divide sus hojas en varios archivos.")
+            sheets.append(sheet)
         if not sheets:
             raise ValueError("El libro no contiene hojas convertibles.")
         for sheet in sheets:

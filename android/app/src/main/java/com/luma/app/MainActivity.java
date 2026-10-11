@@ -240,6 +240,7 @@ public final class MainActivity extends Activity {
         }
         if(!uris.isEmpty())importUris(uris);
     }
+    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);execute(()->importSharedIntent(intent));}
     private void importUris(List<Uri> uris) {
         execute(() -> {
             if(!busy.compareAndSet(false,true))return;
@@ -472,6 +473,8 @@ public final class MainActivity extends Activity {
         if(message.contains("BadZipFile")||message.contains("not a zip")||message.contains("InvalidFileException"))return "El documento está dañado o su extensión no corresponde al contenido. Guarda otra copia desde su aplicación original.";
         if(message.contains("UnicodeEncodeError"))return "Hay caracteres que Windows-1252 no puede guardar. Elige UTF-8 y vuelve a convertir.";
         if(message.contains("Permission denied"))return "No hay permiso para leer el archivo. Selecciónalo otra vez.";
+        if(message.toLowerCase(Locale.ROOT).contains("encrypted")||message.toLowerCase(Locale.ROOT).contains("password"))return "El documento está cifrado. Guarda una copia sin contraseña y vuelve a intentarlo.";
+        if(message.contains("No se pudo convertir el archivo Excel"))return "No se pudo leer la hoja. Comprueba que el archivo esté completo o guarda otra copia en formato XLSX u ODS.";
         if(message.length()>450)message=message.substring(0,450)+"…";
         return message.replaceFirst("^[A-Za-z_.]+(?:Error|Exception): ","");
     }
@@ -480,5 +483,5 @@ public final class MainActivity extends Activity {
     @Override public void onBackPressed() {
         browser.evaluateJavascript("window.Luma && window.Luma.back()",result->{if(!"true".equals(result)){if(busy.get())Toast.makeText(this,"Puedes detener el lote desde la pantalla de conversión.",Toast.LENGTH_SHORT).show();else super.onBackPressed();}});
     }
-    @Override protected void onDestroy(){super.onDestroy();worker.shutdown();if(browser!=null){browser.removeJavascriptInterface("LumaNative");browser.destroy();browser=null;}}
+    @Override protected void onDestroy(){super.onDestroy();cancelled.set(true);worker.shutdown();if(browser!=null){browser.removeJavascriptInterface("LumaNative");browser.destroy();browser=null;}}
 }
