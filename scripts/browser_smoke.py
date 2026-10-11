@@ -44,7 +44,7 @@ def main():
                 launch["args"] += ["--single-process", "--no-zygote", "--disable-gpu"]
             browser = playwright.chromium.launch(**launch)
             for width in (320, 360, 390, 412, 720):
-                page = browser.new_page(viewport={"width": width, "height": 844}, device_scale_factor=1)
+                page = browser.new_page(viewport={"width": width, "height": 844}, device_scale_factor=1, bypass_csp=True)
                 errors = []
                 page.on("pageerror", lambda error: errors.append(str(error)))
                 page.add_init_script(MOCK)
