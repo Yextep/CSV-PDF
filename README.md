@@ -1,5 +1,7 @@
 # CSV-PDF
 
+Este proyecto también incluye **Luma**, una app Android en español para convertir archivos sin conexión, con modo claro/oscuro, selección de carpetas, historial y exportación. Consulta [Luma para Android](docs/LUMA.md) para conocer sus formatos, límites, compilación e instalación. El APK firmado se genera con GitHub Actions en el artefacto **Luma-APK**.
+
 Conversor recursivo en Python de hojas de cálculo Excel/Calc a CSV y documentos Word/Writer a PDF. El punto de entrada es [`csv-pdf.py`](csv-pdf.py), que recorre una carpeta y sus subcarpetas, procesa los formatos reconocidos y genera reportes de la ejecución.
 
 ## Funciones
