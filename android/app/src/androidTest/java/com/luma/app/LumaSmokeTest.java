@@ -78,6 +78,7 @@ public class LumaSmokeTest {
         try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)) {
             waitFor(scenario,"window.Luma && state.ready");
             evaluate(scenario,"send('theme',{mode:'light'})");waitFor(scenario,"document.documentElement.dataset.theme==='light'");
+            assertEquals("El botón de añadir archivos debe quedar por encima de la navegación", "true",evaluate(scenario,"document.querySelector('#pick-files').getBoundingClientRect().bottom <= document.querySelector('.bottom-nav').getBoundingClientRect().top - 4"));
             screenshot("luma-android-light.png");
             evaluate(scenario,"send('theme',{mode:'dark'})");waitFor(scenario,"document.documentElement.dataset.theme==='dark'");
             screenshot("luma-android-dark.png");

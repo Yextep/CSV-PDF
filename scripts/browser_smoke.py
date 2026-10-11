@@ -43,8 +43,8 @@ def main():
                 launch["executable_path"] = shutil.which("chromium")
                 launch["args"] += ["--single-process", "--no-zygote", "--disable-gpu"]
             browser = playwright.chromium.launch(**launch)
-            for width in (320, 360, 390, 412, 720):
-                page = browser.new_page(viewport={"width": width, "height": 844}, device_scale_factor=1, bypass_csp=True)
+            for width, height in ((320,844), (360,844), (390,844), (412,844), (720,844), (320,640), (390,680)):
+                page = browser.new_page(viewport={"width": width, "height": height}, device_scale_factor=1, bypass_csp=True)
                 errors = []
                 page.on("pageerror", lambda error: errors.append(str(error)))
                 page.add_init_script(MOCK)
@@ -53,10 +53,11 @@ def main():
                 assert page.locator("#convert").is_disabled()
                 assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
                 assert page.evaluate("Math.abs(innerHeight-document.querySelector('.bottom-nav').getBoundingClientRect().bottom-16)<2")
+                assert page.evaluate("document.querySelector('#pick-files').getBoundingClientRect().bottom <= document.querySelector('.bottom-nav').getBoundingClientRect().top - 4")
                 for mode in ("light", "dark"):
                     page.evaluate(f"send('theme',{{mode:'{mode}'}})")
                     page.wait_for_function(f"document.documentElement.dataset.theme === '{mode}'")
-                    if width == 390:
+                    if width == 390 and height == 844:
                         page.wait_for_timeout(300)
                         page.screenshot(path=str(ROOT / f"docs/luma-{mode}.png"), full_page=True)
                 page.locator("#demo").click()
@@ -89,7 +90,7 @@ def main():
             browser.close()
     finally:
         server.shutdown()
-    print("Interfaz verificada en 5 anchos: navegación, temas, selección, historial y diálogos.")
+    print("Interfaz verificada en 5 anchos y 3 alturas: botones visibles, navegación, temas, selección, historial y diálogos.")
 
 
 if __name__ == "__main__":
