@@ -62,6 +62,7 @@ def main():
                 page.locator("#demo").click()
                 page.wait_for_function("state.selection.length===2")
                 assert page.locator("#convert").is_enabled()
+                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
                 page.locator('[data-kind="excel"]').click()
                 assert "1 archivo" in page.locator("#convert").inner_text()
                 page.locator('[data-kind="both"]').click()
@@ -79,6 +80,10 @@ def main():
                 page.wait_for_function("state.history.length===0")
                 page.evaluate("state.selection=[{id:'x',name:'<img src=x onerror=alert(1)>.txt',bytes:1}];render();navigate('convert')")
                 assert page.locator("#selection img").count() == 0
+                page.evaluate("state.selection=Array.from({length:8},(_,i)=>({id:String(i),name:'Archivo '+i+'.txt',bytes:10}));render()")
+                assert page.locator("#selection .file-row").count() == 4
+                page.locator('[data-more]').click()
+                assert page.locator("#selection .file-row").count() == 8
                 assert not errors, errors
                 page.close()
             browser.close()

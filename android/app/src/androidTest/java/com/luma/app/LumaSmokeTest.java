@@ -49,11 +49,8 @@ public class LumaSmokeTest {
     }
     private void screenshot(String name)throws Exception {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();Thread.sleep(700);
-        Bitmap bitmap=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
-        assertNotNull(bitmap);
-        File target=new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalFilesDir(null),name);
-        try(FileOutputStream out=new FileOutputStream(target)){assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,out));}
-        bitmap.recycle();
+        ParcelFileDescriptor descriptor=InstrumentationRegistry.getInstrumentation().getUiAutomation().executeShellCommand("screencap -p /sdcard/Download/"+name);
+        try(InputStream in=new ParcelFileDescriptor.AutoCloseInputStream(descriptor)){byte[] buffer=new byte[1024];while(in.read(buffer)!=-1){}}
     }
     private static String read(File file)throws Exception {
         try(InputStream in=new FileInputStream(file);ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[] buffer=new byte[8192];int n;while((n=in.read(buffer))!=-1)out.write(buffer,0,n);return out.toString("UTF-8");}
@@ -120,7 +117,7 @@ public class LumaSmokeTest {
             waitFor(scenario,"state.selection.length===1 && !state.busy");
             Intents.intended(hasAction(Intent.ACTION_OPEN_DOCUMENT));
             evaluate(scenario,"document.querySelector('#convert').click()");
-            waitFor(scenario,"!state.busy && state.history[0].outputs.includes('importado.pdf')");
+            waitFor(scenario,"!state.busy && state.history[0].outputs.includes('importado.pdf') && !document.querySelector('#modal-wrap').hidden");
             JSONObject job=new JSONArray(evaluate(scenario,"state.history")).getJSONObject(0);
             File source=new File(target.getFilesDir(),"sessions/"+job.getString("id")+"/importado.pdf");
             Uri output=Uri.parse("content://com.luma.app.test.documents/exportado.pdf");

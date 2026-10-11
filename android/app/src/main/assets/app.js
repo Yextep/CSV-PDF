@@ -4,7 +4,7 @@ const $$ = (s) => [...document.querySelectorAll(s)];
 const icon = (name) => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const esc = (text) => String(text ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let state = {ready:false,busy:false,selection:[],history:[],active:null,themeMode:'system'};
-let page = 'convert', kind = 'both', modalSession = null, previousFocus = null, toastTimer;
+let page = 'convert', kind = 'both', modalSession = null, previousFocus = null, toastTimer, showAllFiles = false;
 function send(action, data = {}) {
   if (window.LumaNative) LumaNative.request(action, JSON.stringify(data));
   else if (action === 'theme') applyTheme(data.mode, data.mode === 'system' ? (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light') : data.mode);
@@ -33,7 +33,10 @@ function navigate(target) {
 function render() {
   const selected = $('#selection');
   selected.hidden = !state.selection.length;
-  selected.innerHTML = `<div class="list-title"><b>${state.selection.length} ${state.selection.length===1?'archivo seleccionado':'archivos seleccionados'}</b><button data-clear ${state.busy?'disabled':''}>Vaciar</button></div><div>${state.selection.map(f => `<div class="file-row"><span class="file-icon ${isSheet(f.name)?'mint':''}">${icon(isSheet(f.name)?'grid':'file')}</span><div class="file-copy"><b>${esc(f.name)}</b><small>${size(f.bytes)} · ${isSheet(f.name)?'Hoja → CSV':'Texto → PDF'}${f.relative && f.relative !== f.name?' · '+esc(f.relative):''}</small></div><button class="remove-file" data-remove="${esc(f.id)}" aria-label="Quitar ${esc(f.name)}" ${state.busy?'disabled':''}>${icon('close')}</button></div>`).join('')}</div>`;
+  $('.import-card').classList.toggle('has-selection',state.selection.length>0);
+  if (!state.selection.length) showAllFiles = false;
+  const visible = showAllFiles ? state.selection : state.selection.slice(0,4);
+  selected.innerHTML = `<div class="list-title"><b>${state.selection.length} ${state.selection.length===1?'archivo seleccionado':'archivos seleccionados'}</b><button data-clear ${state.busy?'disabled':''}>Vaciar</button></div><div>${visible.map(f => `<div class="file-row"><span class="file-icon ${isSheet(f.name)?'mint':''}">${icon(isSheet(f.name)?'grid':'file')}</span><div class="file-copy"><b>${esc(f.name)}</b><small>${size(f.bytes)} · ${isSheet(f.name)?'Hoja → CSV':'Texto → PDF'}${f.relative && f.relative !== f.name?' · '+esc(f.relative):''}</small></div><button class="remove-file" data-remove="${esc(f.id)}" aria-label="Quitar ${esc(f.name)}" ${state.busy?'disabled':''}>${icon('close')}</button></div>`).join('')}</div>${state.selection.length>4?`<button class="more-files" data-more>${showAllFiles?'Mostrar menos':`Ver otros ${state.selection.length-4} archivos`}</button>`:''}`;
   const count = selectedCount();
   $('#convert').disabled = !state.ready || state.busy || count === 0;
   $('#convert span').textContent = !state.ready?'Preparando Luma…':state.busy?'Trabajando en tus archivos…':count?`Convertir ${count} ${count===1?'archivo':'archivos'}`:'Convertir archivos';
@@ -77,11 +80,13 @@ function confirmDelete(id) {
 window.Luma = {
   onEvent(type, data) {
     if (type === 'state') {
+      const firstSelection = !state.selection.length && data.selection.length>0 && !data.busy;
       state = data;
       if (data.options) { kind = data.options.kind || 'both'; $('#delimiter').value = data.options.delimiter === '\t'?'tab':data.options.delimiter || ','; $('#encoding').value = data.options.encoding || 'utf-8-sig'; $('#safe-csv').checked = data.options.safe !== false; }
       $$('#kind-select button').forEach(b => b.setAttribute('aria-pressed',String(b.dataset.kind === kind)));
       applyTheme(data.themeMode || 'system',data.theme || document.documentElement.dataset.theme);
       render();
+      if (firstSelection) { closeModal(); navigate('convert'); requestAnimationFrame(()=>$('#selection').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'})); }
     } else if (type === 'toast' || type === 'error') toast(data.message);
     else if (type === 'done') { const session = state.history.find(h => h.id === data.id); if (session) showSession(session); }
     else if (type === 'theme') applyTheme(data.mode,data.resolved);
@@ -95,6 +100,7 @@ document.addEventListener('click', e => {
   if (b.dataset.theme) send('theme',{mode:b.dataset.theme});
   if (b.dataset.remove) send('remove',{id:b.dataset.remove});
   if (b.hasAttribute('data-clear')) send('clearSelection');
+  if (b.hasAttribute('data-more')) { showAllFiles=!showAllFiles; render(); }
   if (b.hasAttribute('data-cancel')) { send('cancel'); b.disabled=true; b.textContent='Deteniendo al terminar este archivo…'; }
   if (b.dataset.session) showSession(state.history.find(h=>h.id===b.dataset.session));
   if (b.dataset.fileAction) send('file',{session:modalSession,name:b.dataset.name,action:b.dataset.fileAction});
