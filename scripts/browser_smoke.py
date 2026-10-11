@@ -50,10 +50,12 @@ def main():
                 page.add_init_script(MOCK)
                 page.goto(f"http://127.0.0.1:{server.server_port}/index.html")
                 page.wait_for_function("state.ready")
+                page.wait_for_function("getComputedStyle(document.querySelector('#page-convert')).opacity === '1'")
                 assert page.locator("#convert").is_disabled()
                 assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
                 assert page.evaluate("Math.abs(innerHeight-document.querySelector('.bottom-nav').getBoundingClientRect().bottom-16)<2")
-                assert page.evaluate("document.querySelector('#pick-files').getBoundingClientRect().bottom <= document.querySelector('.bottom-nav').getBoundingClientRect().top - 4")
+                bounds = page.evaluate("({width:innerWidth,height:innerHeight,buttonBottom:document.querySelector('#pick-files').getBoundingClientRect().bottom,navTop:document.querySelector('.bottom-nav').getBoundingClientRect().top})")
+                assert bounds['buttonBottom'] <= bounds['navTop'] - 4, bounds
                 for mode in ("light", "dark"):
                     page.evaluate(f"send('theme',{{mode:'{mode}'}})")
                     page.wait_for_function(f"document.documentElement.dataset.theme === '{mode}'")
